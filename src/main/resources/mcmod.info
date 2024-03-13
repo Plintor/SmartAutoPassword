@@ -1,0 +1,16 @@
+[
+{
+  "modid": "smartpassword",
+  "name": "SmartPassword",
+  "description": "Автоматически вводит пароли",
+  "version": "0.7",
+  "mcversion": "1.12.2",
+  "url": "https://github.com/Plintor",
+  "updateUrl": "https://t.me/plintosofts",
+  "authorList": ["Plinto"],
+  "credits": "Умный автопароль",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
