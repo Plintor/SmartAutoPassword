@@ -14,7 +14,7 @@ import java.io.*;
 import java.security.SecureRandom;
 import java.util.*;
 
-@Mod(modid = "smartpassword", name = "SmartPassword", version = "0.7")
+@Mod(modid = "smartpassword", name = "SmartAutoPassword", version = "0.7")
 public class SmartAutoPassword {
     private static Minecraft mc=Minecraft.getMinecraft();
     private static boolean enabled=false;
