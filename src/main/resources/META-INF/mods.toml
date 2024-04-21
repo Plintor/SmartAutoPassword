@@ -1,0 +1,24 @@
+modLoader="javafml"
+loaderVersion="[36,)"
+license="All rights reserved"
+[[mods]]
+modId="smartpassword"
+version="0.7"
+displayName="SmartAutoPassword"
+logoFile=""
+credits="Умный авто пароль"
+authors="Plinto"
+description='''Автоматически вводит пароли'''
+
+[[dependencies.smartpassword]]
+    modId="forge"
+    mandatory=true
+    versionRange="[36,)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.smartpassword]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.16.5,1.17)"
+    ordering="NONE"
+    side="BOTH"
