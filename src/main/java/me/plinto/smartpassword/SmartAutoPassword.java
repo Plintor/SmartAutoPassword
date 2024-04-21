@@ -1,65 +1,75 @@
 package me.plinto.smartpassword;
 
-import com.mojang.realmsclient.gui.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.util.text.TextComponentString;
+import net.minecraft.network.play.client.CChatMessagePacket;
+import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.StringTextComponent;
+import net.minecraft.util.text.TextFormatting;
+import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraftforge.client.event.ClientChatEvent;
-import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.Mod.EventHandler;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import java.io.*;
 import java.security.SecureRandom;
-import java.util.*;
+import java.util.Base64;
+import java.util.Properties;
 
-@Mod(modid = "smartpassword", name = "SmartAutoPassword", version = "0.7")
+@Mod("smartpassword")
 public class SmartAutoPassword {
-    private static Minecraft mc=Minecraft.getMinecraft();
-    private static boolean enabled=false;
-    private String plutilsdir="";
-    private static String dir="";
-    private String config_file="AutoPassword.on.top";// in file saves your passwords (nick:server:password)
+    private static Minecraft mc = Minecraft.getInstance();
+    private boolean enabled = false;
+    private String plutilsdir = "";
+    private static String dir = "";
+    private String config_file = "AutoPassword.on.top"; // in file saves your passwords (nick:server:password)
+    private String folder_file = "PlintoUtilsCfg"; // Folder for saving passwords
 
     private static final String prefix =
-            ChatFormatting.BLUE + ChatFormatting.BOLD.toString() + "["
-                    + ChatFormatting.GOLD + ChatFormatting.BOLD + "SP"
-                    + ChatFormatting.BLUE + ChatFormatting.BOLD + "]"
-                    + ChatFormatting.WHITE + ChatFormatting.BOLD + " ";//[SP] (SmartPassword)
-    private String my_password;// not public
+            TextFormatting.BLUE + TextFormatting.BOLD.toString() + "["
+                    + TextFormatting.GOLD + TextFormatting.BOLD + "SP"
+                    + TextFormatting.BLUE + TextFormatting.BOLD + "]"
+                    + TextFormatting.WHITE + TextFormatting.BOLD + " ";//[SP] (SmartPassword)
 
-    @EventHandler
-    public void preinit(FMLPreInitializationEvent event) {
-        MinecraftForge.EVENT_BUS.register(new SmartAutoPassword());
+    private String my_password = "";
+
+    public SmartAutoPassword() {
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::setup);
+    }
+
+    private void setup(FMLClientSetupEvent event) {
+        MinecraftForge.EVENT_BUS.register(this);
         String os = System.getProperty("os.name").toLowerCase();
         if (os.contains("win")) {
-            plutilsdir = "C:/PlintoUtilsCfg";
-            dir = "C:/PlintoUtilsCfg/AutoPassword";
+            plutilsdir="C:/"+folder_file;
+            dir="C:/"+folder_file+"/AutoPassword";
         } else if (os.contains("nix") || os.contains("nux") || os.contains("mac")) {
-            plutilsdir = "/PlintoUtilsCfg";
-            dir = "/PlintoUtilsCfg/AutoPassword";
+            plutilsdir="/"+folder_file;
+            dir="/"+folder_file+"/AutoPassword";
         } else {
-            plutilsdir = "C:/PlintoUtilsCfg";
-            dir = "C:/PlintoUtilsCfg/AutoPassword";
+            plutilsdir="C:/"+folder_file;
+            dir="C:/"+folder_file+"/AutoPassword";
         }
         createcfg();
         loadcfg();
     }
 
-    @SubscribeEvent
-    public void chat(ClientChatEvent ev) {
+
+    @SubscribeEvent(priority=EventPriority.NORMAL,receiveCanceled=true)
+    public void onEvent(ClientChatEvent ev) {
         String m = ev.getMessage();
         if (m.startsWith("-ap")) {
             ev.setCanceled(true);
             if (enabled) {
                 enabled = false;
                 updatecfg(false);
-                mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix+"\u0410\u0432\u0442\u043e\u041f\u0430\u0440\u043e\u043b\u044c \u0432\u044b\u043a\u043b\u044e\u0447\u0435\u043d")); // ... ... \u
+                mc.gui.getChat().addMessage(new TranslationTextComponent(prefix+"АвтоПароль выключен")); // ... ...
             } else {
                 enabled = true;
                 updatecfg(true);
-                mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix+"\u0410\u0432\u0442\u043e\u041f\u0430\u0440\u043e\u043b\u044c \u0432\u043a\u043b\u044e\u0447\u0435\u043d"));
+                mc.gui.getChat().addMessage(new TranslationTextComponent(prefix+"АвтоПароль включен"));
             }
         }
         if (m.startsWith("/login ") || m.startsWith("/l ") || m.startsWith("/reg ") || m.startsWith("/register ")) {
@@ -67,89 +77,76 @@ public class SmartAutoPassword {
             if (splmess.length == 2) {
                 String origpass = splmess[1];
                 if (checkisonserver()) {
-                    if (!issaved(mc.getSession().getUsername(), mc.getCurrentServerData().serverIP.replace(":", "_"))) {
+                    if (!issaved(mc.player.getGameProfile().getName(), mc.getCurrentServer().ip.replace(":", "_"))) {
                         asksave(origpass);
                         my_password = origpass;
                     } else {
-                        mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix + "\u041f\u0430\u0440\u043e\u043b\u044c \u0443\u0436\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u0435\u0442 \u0434\u043b\u044f \u044d\u0442\u043e\u0433\u043e \u0441\u0435\u0440\u0432\u0435\u0440\u0430"));}}}
+                        mc.gui.getChat().addMessage(new TranslationTextComponent(prefix + "Пароль уже существует для этого сервера"));}}}
         }
 
         if (m.startsWith("-spass")) {
             ev.setCanceled(true);
             if (checkisonserver()) {
-                String password = get(mc.getSession().getUsername(), mc.getCurrentServerData().serverIP.replace(":", "_"));
+                String password = get(mc.player.getGameProfile().getName(), mc.getCurrentServer().ip.replace(":", "_"));
                 if (password != null) {
-                    mc.player.sendChatMessage("/login "+decrypt(password));
+                    mc.getConnection().send(new CChatMessagePacket("/login "+decrypt(password)));
                 } else {
-                    mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix+"\u041f\u0430\u0440\u043e\u043b\u044c \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d \u0434\u043b\u044f \u044d\u0442\u043e\u0433\u043e \u0441\u0435\u0440\u0432\u0435\u0440\u0430"));}}
+                    mc.gui.getChat().addMessage(new TranslationTextComponent(prefix+"Пароль не найден для этого сервера"));}}
         }
 
         if (m.startsWith("-sreg")) {
             ev.setCanceled(true);
             if (checkisonserver()) {
                 String[] splmess = m.split(" ");
-                int passlength = 22;
+                int passlength = 14;
                 if (splmess.length > 1) {
                     try {
                         passlength = Integer.parseInt(splmess[1]);
                     } catch (NumberFormatException ex) {
-                        mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix + "\u041d\u0435\u0432\u0435\u0440\u043d\u044b\u0439 \u0430\u0440\u0433\u0443\u043c\u0435\u043d\u0442: " + splmess[1]));}}
-                String charss = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_1234567890";
+                        mc.gui.getChat().addMessage(new TranslationTextComponent(prefix + "Неверный аргумент (нужно ввести длину пароль например 11): " + splmess[1]));}}
+                String charss = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
                 StringBuilder randompass = new StringBuilder();
                 SecureRandom random = new SecureRandom();
-                randompass.append(mc.getSession().getUsername());
+                randompass.append(mc.player.getGameProfile().getName());
                 for (int i = 0; i < passlength; i++) {
                     randompass.append(charss.charAt(random.nextInt(charss.length())));}
                 my_password = randompass.toString();
-                if (!issaved(mc.getSession().getUsername(), mc.getCurrentServerData().serverIP.replace(":", "_"))) {
-                    mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix+" "+my_password));
-                    mc.player.sendChatMessage("/register " + my_password + " " + my_password);
-                    save(mc.getSession().getUsername(), mc.getCurrentServerData().serverIP.replace(":", "_"), encrypt(my_password));
-                    mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix + "\u041f\u0430\u0440\u043e\u043b\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d"));
+                if (!issaved(mc.player.getGameProfile().getName(), mc.getCurrentServer().ip.replace(":", "_"))) {
+                    mc.gui.getChat().addMessage(new TranslationTextComponent(prefix+my_password));
+                    mc.getConnection().send(new CChatMessagePacket("/register " + my_password + " " + my_password));
+
+                    save(mc.player.getGameProfile().getName(), mc.getCurrentServer().ip.replace(":", "_"), encrypt(my_password));
+                    mc.gui.getChat().addMessage(new TranslationTextComponent(prefix + "Пароль сохранен"));
                 } else {
-                    mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix + "\u041f\u0430\u0440\u043e\u043b\u044c \u0443\u0436\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u0435\u0442"));}}
+                    mc.gui.getChat().addMessage(new TranslationTextComponent(prefix + "Пароль уже сохранен"));}}
         }
 
         try {
             if (m.startsWith("-yes")) {
                 ev.setCanceled(true);
                 if (checkisonserver()) {
-                    if (!issaved(mc.getSession().getUsername(), mc.getCurrentServerData().serverIP.replace(":", "_"))) {
-                        save(mc.getSession().getUsername(), mc.getCurrentServerData().serverIP.replace(":", "_"), encrypt(my_password));
-                        mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix + "\u041f\u0430\u0440\u043e\u043b\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d"));
+                    if (!issaved(mc.player.getGameProfile().getName(), mc.getCurrentServer().ip.replace(":", "_"))) {
+                        save(mc.player.getGameProfile().getName(), mc.getCurrentServer().ip.replace(":", "_"), encrypt(my_password));
+                        mc.gui.getChat().addMessage(new TranslationTextComponent(prefix + "Пароль сохранен"));
                         my_password = "";
                     } else {
-                        mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix + "\u041d\u0430\u043f\u043e\u043c\u0438\u043d\u0430\u043d\u0438\u0435: \u041f\u0430\u0440\u043e\u043b\u044c \u0443\u0436\u0435 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d!"));}}
+                        mc.gui.getChat().addMessage(new TranslationTextComponent(prefix + "Напоминание: Пароль уже сохранен"));}}
             }
         } catch (NullPointerException e) {
-            mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix + "\u041f\u0440\u043e\u0438\u0437\u043e\u0448\u043b\u0430 \u043e\u0448\u0438\u0431\u043a\u0430, \u0432\u043e\u0437\u043c\u043e\u0436\u043d\u043e \u0432\u044b \u043f\u044b\u0442\u0430\u0435\u0442\u0435\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0430\u0440\u043e\u043b\u044c \u043d\u0435 \u043d\u0430\u043f\u0438\u0441\u0430\u0432 /login <\u043f\u0430\u0440\u043e\u043b\u044c>"));
+            mc.gui.getChat().addMessage(new TranslationTextComponent(prefix + "Произошла ошибка :( Возможно вы пытаетесь сохарнить пароль не написав /login <пароль>"));
         }
 
         if (m.startsWith("-no")) {
             ev.setCanceled(true);
-            mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix + "\u041f\u0430\u0440\u043e\u043b\u044c \u043d\u0435 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d"));
+            mc.gui.getChat().addMessage(new TranslationTextComponent(prefix + "Пароль не сохранен"));
             my_password = "";
         }
     }
 
-    @SubscribeEvent
-    public void RealChatEvent(ClientChatReceivedEvent e) {
-        String m = e.getMessage().getUnformattedText();
-        if (checkisonserver()) {
-            if ((m.contains("/login ") || m.contains("/reg ") || m.contains("/register ") || m.contains("/l ")) &&
-                    enabled && get(mc.getSession().getUsername(), mc.getCurrentServerData().serverIP.replace(":", "_")) != null) {
-                String pass = get(mc.getSession().getUsername(), mc.getCurrentServerData().serverIP.replace(":", "_"));
-                Timer timer = new Timer();
-                timer.schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        mc.player.sendChatMessage("/login "+decrypt(pass));
-                    }
-                }, 200);}}
-    }
+
 
     private void asksave(String p) {
-        mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix + "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0430\u0440\u043e\u043b\u044c? \u041d\u0430\u043f\u0438\u0448\u0438 '-yes' \u0434\u043b\u044f \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u044f \u0438\u043b\u0438 '-no' \u0434\u043b\u044f \u043e\u0442\u043c\u0435\u043d\u044b"));
+        mc.gui.getChat().addMessage(new TranslationTextComponent(prefix + "Сохранить пароль? Напишите '-yes' для сохранение или 'no' для отмены"));
     }
 
     private boolean issaved(String nick, String serv) {
@@ -170,7 +167,7 @@ public class SmartAutoPassword {
     private void save(String nick, String serv, String pass) {
         String aptext = nick + ":" + checkserver(serv) + ":" + pass;
         if (aptext.isEmpty()) {
-            mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix + "\u041d\u0443\u0436\u043d\u043e \u043f\u0440\u043e\u043f\u0438\u0441\u0430\u0442\u044c /login <\u0432\u0430\u0448 \u043f\u0430\u0440\u043e\u043b\u044c> \u0438 \u043f\u043e\u0442\u043e\u043c \u043d\u0430\u043f\u0438\u0441\u0430\u0442\u044c '-yes' (\u0431\u0435\u0437 ' \u0438 '), \u0434\u043b\u044f \u0442\u043e\u0433\u043e \u0447\u0442\u043e\u0431\u044b \u0435\u0433\u043e \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"));
+            mc.gui.getChat().addMessage(new TranslationTextComponent(prefix + "Нужно написать /login <ваш пароль> и потом написать '-yes' (без ' и ') для того чтобы сохранить пароль"));
             return;}
 
         File pldir = new File(plutilsdir);
@@ -197,31 +194,31 @@ public class SmartAutoPassword {
                     if (p.length == 3 && p[0].equals(nick) && p[1].equals(checkserver(serv))) {
                         return p[2];}}
             } catch (IOException e) {
-                mc.ingameGUI.getChatGUI().printChatMessage(new TextComponentString(prefix+"\u041d\u0435\u0442\u0443 \u043f\u0430\u0440\u043e\u043b\u044f \u0434\u043b\u044f \u044d\u0442\u043e\u0433\u043e \u0430\u043a\u043a\u0430\u0443\u043d\u0442\u0430."));}}
+                mc.gui.getChat().addMessage(new TranslationTextComponent(prefix+"Нету пароля для этого аккаунта."));}}
         return null;
     }
 
-    public static String checkserver(String serv) {// for 2b2t.org.ru and 6g6s :)
-        String server = serv.toLowerCase();
-        if (server.contains("2b2t.org.ru") ||
-                server.contains("mc.2b2t.org.ru") ||
-                server.contains("2b2t.org.ua") ||
-                server.contains("join.2b2t.org.ru") ||
-                server.contains("shield.2b2t.org.ru") ||
-                server.contains("novosib.2b2t.org.ru") ||
-                server.contains("pl.2b2t.org.ru") ||
-                server.contains("staging.2b2t.org.ru")) {
+
+    public static String checkserver(String server) {// for 2b2t.org.ru and 6g6s :)
+        String s = server.toLowerCase();
+        if (s.contains("2b2t.org.ru") ||
+                s.contains("mc.2b2t.org.ru") ||
+                s.contains("2b2t.org.ua") ||
+                s.contains("join.2b2t.org.ru") ||
+                s.contains("shield.2b2t.org.ru") ||
+                s.contains("novosib.2b2t.org.ru") ||
+                s.contains("pl.2b2t.org.ru") ||
+                s.contains("staging.2b2t.org.ru")) {
             return "2bru";
         } else if (
-                server.contains("6g6s.xyz") ||
-                server.contains("eu.6g6s.xyz")) {
+                s.contains("6g6s.xyz") || s.contains("eu.6g6s.xyz")) {
             return "6g6s";
         } else {
-            return serv;}
+            return server;}
     }
 
     private static boolean checkisonserver() {
-        if (mc.getCurrentServerData() != null) {
+        if (mc.getCurrentServer() != null) {
             return true;}
         return false;
     }
@@ -245,7 +242,7 @@ public class SmartAutoPassword {
                 Properties proj = new Properties();
                 try (FileReader reader = new FileReader(cfg)) {
                     proj.load(reader);
-                    enabled = Boolean.parseBoolean(proj.getProperty("enabled", "false"));}}
+                    enabled = Boolean.parseBoolean(proj.getProperty("enabled","false"));}}
         } catch (IOException e) {
             e.printStackTrace();}
     }
@@ -257,12 +254,14 @@ public class SmartAutoPassword {
                 Properties proj = new Properties();
                 try (FileReader read = new FileReader(cfg)) {
                     proj.load(read);
-                    proj.setProperty("enabled", String.valueOf(val));}
+                    proj.setProperty("enabled",String.valueOf(val));}
                 try (FileWriter writer = new FileWriter(cfg)) {
                     proj.store(writer, null);}}
         } catch (IOException e) {
             e.printStackTrace();}
     }
+
+
 
     private static String encrypt(String t) {// ohh shit dont angry :(
         String hehehee = t
