@@ -1,25 +1,24 @@
-modLoader="javafml"
-loaderVersion="[37,)"
-license="All rights reserved"
-
+modLoader = "javafml"
+loaderVersion = "[39,)"
+license = "All rights reserved"
 [[mods]]
-modId="smartpassword"
-version="0.7"
-displayName="SmartAutoPassword"
-logoFile=""
-credits="SmartAutoPassword"
-authors="Plinto"
-description='''Автоматически вводит пароли'''
+modId = "smartpassword"
+version = "0.7"
+displayName = "SmartAutoPassword"
+logoFile = ""
+credits = "SmartAutoPassword"
+authors = "Plinto"
+description = '''Автоматически вводит пароли'''
 
 [[dependencies.smartpassword]]
-modId="forge"
-mandatory=true
-versionRange="[37,)"
-ordering="NONE"
-side="BOTH"
+modId = "forge"
+mandatory = true
+versionRange = "[39,)"
+ordering = "NONE"
+side = "BOTH"
 [[dependencies.smartpassword]]
-modId="minecraft"
-mandatory=true
-versionRange="[1.17.1,1.18)"
-ordering="NONE"
-side="BOTH"
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.18.1,1.19)"
+ordering = "NONE"
+side = "BOTH"
