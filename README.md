@@ -19,3 +19,19 @@
 По желанию можете изменить папку хранения паролей.
 
 Данная модификация возможно спасет ваш аккаунт на сервере (подразумывается если вы скачали вредоносный мод до того как будете авторизироватся на сервере), но если злоумышленник украдет файл, тогда если вы не изменили метод шифрования, вы потеряете аккаунт/аккаунты :(
+
+## Оффициальные ссылки для скачивания:
+https://modrinth.com/mod/autopassword
+
+
+## Не я выкладывал
+https://www.modpackindex.com/mod/60256/smartautopassword
+
+https://openeye.openmods.info/mod/smartpassword
+
+https://minecraft-club.ru/?mod=autopassword
+
+https://sodamc.com/59714-10092401.html (ух эти китайцы)
+
+https://www.zitbbs.com/thread-21180-1-1.html
+
