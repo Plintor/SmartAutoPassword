@@ -35,3 +35,6 @@ https://sodamc.com/59714-10092401.html (ух эти китайцы)
 
 https://www.zitbbs.com/thread-21180-1-1.html
 
+https://metamods.net/mods/autopassword / https://metamods.ru/mods/autopassword
+
+
